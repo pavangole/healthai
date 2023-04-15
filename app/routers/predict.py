@@ -30,7 +30,7 @@ def identify_disease(files: Annotated[list[UploadFile], File(description="Can ta
     for file in files:
         save_upload_file(file, user_id, Path(
             f"{os.getcwd()}/app/storage"))
-    custom_path = f"{os.getcwd()}/app/storage/{user_id}/processing"
+    custom_path = f"{os.getcwd()}/app/storage/{user_id}/processing/"
     custom_image_paths = [custom_path +
                           fname for fname in os.listdir(custom_path)]
     # Turn custom images into batch datasets

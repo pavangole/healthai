@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_hub as hub
+
+
 import os
-print(os.getcwd())
 labels = pd.read_csv(os.getcwd() + '/app/mlmodel/csvfiles/labels.csv')
 unique_labels = np.unique(labels["labels"])
 
@@ -80,7 +81,11 @@ def get_pred_label(prediction_probabilities):
   """
   Turns an array of prediction probabilities into a prediction label
   """
-  return unique_labels[np.argmax(prediction_probabilities)]
+  if prediction_probabilities[np.argmax(prediction_probabilities)] >= 0.6:
+    print(prediction_probabilities[np.argmax(prediction_probabilities)])
+    return unique_labels[np.argmax(prediction_probabilities)]
+  else:
+    return "no_tumor"
 
 # Create a function to load a trained model
 def load_model(model_path):
@@ -93,6 +98,6 @@ def load_model(model_path):
   return model
 
 # Load in the saved model
-model = load_model(os.getcwd() + "/app/mlmodel/BrainTumorModel.h5")
+model = load_model(os.getcwd() + "/app/mlmodel/model.h5")
 
 # Get custom image filepaths (Change this path to the location where you saved the uploaded images from the app)

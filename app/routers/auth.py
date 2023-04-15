@@ -1,5 +1,4 @@
-import email
-from turtle import up
+
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -118,9 +117,9 @@ def authenticate_user(email: str, password: str, db: Session):
     user = crud.get_user_by_email(email=email, db=db)
     if user is None:
         return False
-    if user.hashed_password != password:
+    if user.password != password:
         return False
-    return user, user.age
+    return user
 
 
 def create_access_token(*, data: dict, expires_delta: timedelta = None):
@@ -153,8 +152,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
-async def get_current_active_user(current_user=Depends(get_current_user)):
-    return current_user
+
 
 
 @router.get("/")
@@ -164,7 +162,7 @@ async def homepage():
 
 @router.post("/token", response_model=Token)
 async def route_login_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user, age = authenticate_user(email=form_data.username, password=form_data.password, db=db)
+    user = authenticate_user(email=form_data.username, password=form_data.password, db=db)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -189,7 +187,7 @@ async def login_basic(auth: BasicAuth = Depends(basic_auth), db: Session = Depen
     try:
         decoded = base64.b64decode(auth).decode("ascii")
         username, _, password = decoded.partition(":")
-        user, age = authenticate_user(email=username, password=password, db=db)
+        user = authenticate_user(email=username, password=password, db=db)
         if not user:
             raise HTTPException(status_code=400, detail="Incorrect email or password")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -199,18 +197,15 @@ async def login_basic(auth: BasicAuth = Depends(basic_auth), db: Session = Depen
 
         token = jsonable_encoder(access_token)
         redirect = "False"
-        print(age)
-        if age is None:
-            redirect = "True"
-        response = JSONResponse({'status': "success", 'redirect': redirect, 'token': token},
-                                headers={'token': "{token}"})
+        response = JSONResponse({'status': "success", 'token': token},
+                                headers={'token': f"{token}"})
         response.set_cookie(
             key="Authorization",
             value=f"Bearer {token}",
             domain="myproject.local",
             httponly=False,
-            max_age=1800,
-            expires=1800,
+            max_age=18000,
+            expires=18000,
         )
         return response
 
@@ -219,7 +214,8 @@ async def login_basic(auth: BasicAuth = Depends(basic_auth), db: Session = Depen
 
 
 @router.post('/register')
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user :schemas.Auth, db: Session = Depends(get_db)):
+    print(user.email)
     result = crud.create_user(db=db, user=user)
     if result:
         return {
@@ -232,23 +228,23 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
             "status": "failed"
         }
 
-@router.post("/forgot_password")
-def forgot_password(user: schemas.UserCreate,db: Session=Depends(get_db)):
-    try:
-        result = crud.get_user_by_email(email = user.email ,db=db )
-        if result:
-            dic = {'email': user.email, 'hashed_password': user.password}
-            crud.update_password(db=db,update_items=dic,email=user.email)
-            return {
-                'status': 'success',
-                'description': 'password changed succesfully'
-            }
-        return {
-            'status': 'failed',
-            'description': 'user doesnt exist'
-        }
-    except Exception as e:
-        print(e)
-        return {
-            "Internal Server Error"
-        }
+# @router.post("/forgot_password")
+# def forgot_password(user: schemas.UserCreate,db: Session=Depends(get_db)):
+#     try:
+#         result = crud.get_user_by_email(email = user.email ,db=db )
+#         if result:
+#             dic = {'email': user.email, 'hashed_password': user.password}
+#             crud.update_password(db=db,update_items=dic,email=user.email)
+#             return {
+#                 'status': 'success',
+#                 'description': 'password changed succesfully'
+#             }
+#         return {
+#             'status': 'failed',
+#             'description': 'user doesnt exist'
+#         }
+#     except Exception as e:
+#         print(e)
+#         return {
+#             "Internal Server Error"
+#         }

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import predict,auth
+from routers import predict,auth,user
 import uvicorn
 from databases.database import engine
 from databases import models, crud
@@ -19,7 +19,9 @@ app.middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(predict.router)
+# app.include_router(predict.router)
+app.include_router(user.router)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", port=9000, log_level="info", reload=True)   
