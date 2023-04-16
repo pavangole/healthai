@@ -4,6 +4,7 @@ import uvicorn
 from databases.database import engine
 from databases import models, crud
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -19,9 +20,9 @@ app.middleware(
 )
 
 app.include_router(auth.router)
-# app.include_router(predict.router)
+app.include_router(predict.router)
 app.include_router(user.router)
-
-
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/storage", StaticFiles(directory="app/storage"),name="storage")
 if __name__ == "__main__":
     uvicorn.run("main:app", port=9000, log_level="info", reload=True)   

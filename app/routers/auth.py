@@ -30,7 +30,7 @@ router = APIRouter(prefix="/auth")
 # openssl rand -hex 32
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 90
 
 
 class Token(BaseModel):
@@ -214,19 +214,36 @@ async def login_basic(auth: BasicAuth = Depends(basic_auth), db: Session = Depen
 
 
 @router.post('/register')
-def register(user :schemas.Auth, db: Session = Depends(get_db)):
-    print(user.email)
-    result = crud.create_user(db=db, user=user)
-    if result:
-        return {
-            "api": "v1",
-            "status": "success"
-        }
-    else:
-        return {
-            "api": "v1",
-            "status": "failed"
-        }
+def register(user: schemas.Auth,auth :BasicAuth = Depends(basic_auth), db: Session = Depends(get_db)):
+    try:
+        print("hello")
+        decoded = base64.b64decode(auth).decode("ascii")
+        username, _, password = decoded.partition(":")
+        user_id = crud.create_user(db=db, user=user)
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Incorrect email or password")
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user_id}, expires_delta=access_token_expires
+        )
+
+        token = jsonable_encoder(access_token)
+        redirect = "False"
+        response = JSONResponse({'status': "success", 'token': token},
+                                headers={'token': f"{token}"})
+        response.set_cookie(
+            key="Authorization",
+            value=f"Bearer {token}",
+            domain="myproject.local",
+            httponly=False,
+            max_age=18000,
+            expires=18000,
+        )
+        return response
+
+    except Exception as e:
+        print(e)
+        return JSONResponse({'status': 'failed'})
 
 # @router.post("/forgot_password")
 # def forgot_password(user: schemas.UserCreate,db: Session=Depends(get_db)):

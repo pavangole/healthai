@@ -1,18 +1,20 @@
-from lib2to3.pgen2.token import GREATER
+
+from datetime import datetime
 from operator import or_
 from pydoc import doc
-from pyexpat import model
 from unicodedata import name
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from databases import models, schemas
-import time
 from typing import List
+from datetime import datetime
+
+def get_time():
+    current_time = datetime.now()
+    # format current time as MySQL DATETIME string
+    return current_time.strftime('%Y-%m-%d %H:%M:%S') 
 
 
-# # get system current time and convert it to unix epoch timestamp
-# def get_current_time():
-#     return int(time.time())
 
 
 # generate random user_id that is always unique
@@ -24,11 +26,9 @@ def generate_user_id():
 
 
 def create_user(db: Session, user: schemas.Auth):
-    print(user.email)
-    # check user already exists otherwise create user
     db_user = db.query(models.Auth).filter(models.Auth.email == user.email).first()
     if db_user:
-        return False
+        return None
     id = generate_user_id()
     db_user = models.Auth(email=user.email,password=user.password,user_id=id,role=user.role)
     db.add(db_user)
@@ -38,7 +38,7 @@ def create_user(db: Session, user: schemas.Auth):
         docter_info(db=db,name=user.name,docter_id=id)
     else:
         patient_info(db=db,name=user.name,patient_id=id)
-    return True
+    return id
 
 def docter_info(db: Session,name,docter_id):
     db_user = models.Docter(name=name,docter_id = docter_id)
@@ -64,8 +64,8 @@ def update_docter_info(db: Session,docter: schemas.DocterInfo,docter_id):
 
 
 
-def update_patient_info(db: Session,patient: schemas.PatientInfo,patient_id):
-    db_user = models.Patient(age=patient.age,address = patient.address)
+def update_patient_info(db: Session,age,address,patient_id):
+    db_user = models.Patient(age=age,address = address)
     hello = db_user.__dict__.copy()
     hello.pop('_sa_instance_state')
     print(hello)
@@ -81,6 +81,26 @@ def get_user_by_id(db: Session, user_id: str):
     return db.query(models.Auth).filter(models.Auth.user_id == user_id).first()
 
 
+def get_info(db: Session, user_id: str, model):
+    if model == models.Patient:
+        return db.query(model).filter(model.patient_id == user_id).first()
+    else:
+        return db.query(model).filter(model.docter_id == user_id).first()
+
+
+def create_patient_history(db: Session, patient_id,disease,image):
+    db_user = models.patientHistory(patient_id=patient_id,disease=disease,image=image,date=get_time())
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return True
+
+
+def get_history(user: schemas.Auth,db):
+    if user.role == "Docter":
+        return db.query(models.Docter).filter(models.Docter.docter_id == user.user_id).all()
+    else:
+        return db.query(models.patientHistory).filter(models.patientHistory.patient_id == user.user_id).all()
 # def create_user_info(db: Session, user: schemas.User):
 #     result = get_user_by_email(db, user.email)
 #     if result.age is not None:

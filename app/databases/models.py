@@ -62,6 +62,7 @@ class Docter(Base):
     name = Column(String(100))
     speciality = Column(String(100))
     age = Column(Integer)
+    phonenumber = Column(BIGINT)
     clinic_address = Column(String(100))
     
 class Patient(Base):
@@ -70,6 +71,7 @@ class Patient(Base):
     name = Column(String(100))
     age = Column(Integer)
     address = Column(String(100))
+    phonenumber = Column(BIGINT)
 
 class History(Base):
     __tablename__="history"
@@ -81,7 +83,13 @@ class History(Base):
     date = Column(DATETIME)
 
 
-
+class patientHistory(Base):
+    __tablename__="patienthistory"
+    id = Column(BIGINT,autoincrement=True,primary_key=True)
+    patient_id = Column(String(100), ForeignKey("auth.user_id"))
+    disease=Column(String(1000))
+    image = Column(String(1000))
+    date = Column(DATETIME)
 
     
 
