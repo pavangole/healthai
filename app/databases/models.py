@@ -86,6 +86,7 @@ class History(Base):
 class patientHistory(Base):
     __tablename__="patienthistory"
     id = Column(BIGINT,autoincrement=True,primary_key=True)
+    scan_type = Column(String(100))
     patient_id = Column(String(100), ForeignKey("auth.user_id"))
     disease=Column(String(1000))
     image = Column(String(1000))

@@ -88,8 +88,8 @@ def get_info(db: Session, user_id: str, model):
         return db.query(model).filter(model.docter_id == user_id).first()
 
 
-def create_patient_history(db: Session, patient_id,disease,image):
-    db_user = models.patientHistory(patient_id=patient_id,disease=disease,image=image,date=get_time())
+def create_patient_history(db: Session, patient_id,disease,image,scan_type):
+    db_user = models.patientHistory(patient_id=patient_id,disease=disease,image=image,date=get_time(),scan_type=scan_type)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

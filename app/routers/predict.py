@@ -1,15 +1,17 @@
 from pathlib import Path
 import os
+import json
 from sqlalchemy.orm import Session
 import shutil
 from typing import Annotated
-from fastapi import APIRouter, File, UploadFile, Depends
+from fastapi import APIRouter, File, UploadFile, Depends, Form
 from databases import crud
 from databases.getdb import get_db
 from routers.auth import get_current_user
 # from mlmodel.braintumor import create_data_batches, model, get_pred_label
 from mlmodel import braintumor
 from mlmodel import diabetic_retinopathy as reti
+from mlmodel import pneumonia as neu
 router = APIRouter(prefix="/predict")
 
 
@@ -27,7 +29,7 @@ def save_upload_file(upload_file: UploadFile, user_id, destination: Path) -> Non
 
 
 @router.post("/upload")
-def identify_disease(files: Annotated[list[UploadFile], File(description="Can take mutiple uploaded files")], user=Depends(get_current_user),db: Session=Depends(get_db)):
+def identify_disease(scan_type: Annotated[str, Form()],files: Annotated[list[UploadFile], File(description="Can take mutiple uploaded files")], user=Depends(get_current_user),db: Session=Depends(get_db)):
     
     user_id = user.user_id
     filename=[]
@@ -47,7 +49,7 @@ def identify_disease(files: Annotated[list[UploadFile], File(description="Can ta
         custom_preds[i]) for i in range(len(custom_preds))]
     for i in range(0,len(custom_pred_labels)):
         print("hello")
-        crud.create_patient_history(patient_id=user_id,db=db,disease=custom_pred_labels[i],image=filename[i])
+        crud.create_patient_history(patient_id=user_id,db=db,disease=custom_pred_labels[i],image=filename[i],scan_type=scan_type)
     src_dir = f"{os.getcwd()}/app/storage/{user_id}/processing"
     dst_dir = f"{os.getcwd()}/app/storage/{user_id}/processed"
 
@@ -60,7 +62,7 @@ def identify_disease(files: Annotated[list[UploadFile], File(description="Can ta
 
 
 @router.post("/upload/retino")
-def identify_disease(files: Annotated[list[UploadFile], File(description="Can take mutiple uploaded files")], user=Depends(get_current_user),db: Session=Depends(get_db)):
+def identify_disease(scan_type: Annotated[str, Form()],files: Annotated[list[UploadFile], File(description="Can take mutiple uploaded files")], user=Depends(get_current_user),db: Session=Depends(get_db)):
     
     user_id = user.user_id
     filename=[]
@@ -80,7 +82,40 @@ def identify_disease(files: Annotated[list[UploadFile], File(description="Can ta
         custom_preds[i]) for i in range(len(custom_preds))]
     for i in range(0,len(custom_pred_labels)):
         print("hello")
-        crud.create_patient_history(patient_id=user_id,db=db,disease=custom_pred_labels[i],image=filename[i])
+        crud.create_patient_history(patient_id=user_id,db=db,disease=custom_pred_labels[i],image=filename[i],scan_type=scan_type)
+    src_dir = f"{os.getcwd()}/app/storage/{user_id}/processing"
+    dst_dir = f"{os.getcwd()}/app/storage/{user_id}/processed"
+
+    # iterate over files in source directory and move them to destination directory
+    for filename in os.listdir(src_dir):
+        src_path = os.path.join(src_dir, filename)
+        dst_path = os.path.join(dst_dir, filename)
+        shutil.move(src_path, dst_path)
+    return custom_pred_labels
+
+
+@router.post("/upload/neu")
+def identify_disease(scan_type: Annotated[str, Form()],files: Annotated[list[UploadFile], File(description="Can take mutiple uploaded files")], user=Depends(get_current_user),db: Session=Depends(get_db)):
+    
+    user_id = user.user_id
+    filename=[]
+    for file in files:
+        save_upload_file(file, user_id, Path(
+            f"{os.getcwd()}/app/storage"))
+        filename.append(file.filename)
+    custom_path = f"{os.getcwd()}/app/storage/{user_id}/processing/"
+    custom_image_paths = [custom_path +
+                          fname for fname in os.listdir(custom_path)]
+    # Turn custom images into batch datasets
+    custom_data = neu.create_data_batches(custom_image_paths, test_data=True)
+    # Make predictions on the custom data
+    custom_preds =  neu.model.predict(custom_data)
+    # Get custom image prediction labels
+    custom_pred_labels = [neu.get_pred_label(
+        custom_preds[i]) for i in range(len(custom_preds))]
+    for i in range(0,len(custom_pred_labels)):
+        print("hello")
+        crud.create_patient_history(patient_id=user_id,db=db,disease=custom_pred_labels[i],image=filename[i],scan_type=scan_type)
     src_dir = f"{os.getcwd()}/app/storage/{user_id}/processing"
     dst_dir = f"{os.getcwd()}/app/storage/{user_id}/processed"
 
